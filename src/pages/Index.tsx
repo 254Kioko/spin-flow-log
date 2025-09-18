@@ -1,4 +1,5 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+// This file is no longer used - CustomerForm is now the main page
+// Keeping for reference in case needed later
 
 const Index = () => {
   return (

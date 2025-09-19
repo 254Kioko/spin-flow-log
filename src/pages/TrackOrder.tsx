@@ -5,17 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { Search, Package, Clock, CheckCircle2, Truck } from "lucide-react";
 
 interface OrderStatus {
+  id: number;
   ticketId: string;
   name: string;
-  phone: string;
-  clothesType: string;
-  quantity: number;
-  dropoffDate: string;
-  status: "Received" | "In Progress" | "Ready" | "Collected";
-  notes?: string;
+  contact: string;
+  clothes: string;
+  created_at: string;
+  status: "Pending" | "In Progress" | "Ready" | "Collected";
 }
 
 const TrackOrder = () => {
@@ -24,33 +24,9 @@ const TrackOrder = () => {
   const [orderData, setOrderData] = useState<OrderStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock data for demo
-  const mockOrders: Record<string, OrderStatus> = {
-    "LMS-123456": {
-      ticketId: "LMS-123456",
-      name: "John Doe",
-      phone: "+1234567890",
-      clothesType: "Shirts",
-      quantity: 5,
-      dropoffDate: "2024-01-15",
-      status: "Ready",
-      notes: "Starch on collars"
-    },
-    "LMS-789012": {
-      ticketId: "LMS-789012",
-      name: "Jane Smith",
-      phone: "+1987654321",
-      clothesType: "Suits",
-      quantity: 2,
-      dropoffDate: "2024-01-16",
-      status: "In Progress",
-      notes: "Dry clean only"
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Received":
+      case "Pending":
         return "bg-status-received text-white";
       case "In Progress":
         return "bg-status-progress text-white";
@@ -65,7 +41,7 @@ const TrackOrder = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Received":
+      case "Pending":
         return <Package className="w-4 h-4" />;
       case "In Progress":
         return <Clock className="w-4 h-4" />;
@@ -93,13 +69,34 @@ const TrackOrder = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const order = mockOrders[ticketNumber.toUpperCase()];
+      // Extract ID from ticket number (e.g., LMS-000123 -> 123)
+      const orderId = parseInt(ticketNumber.replace(/LMS-0*/i, ''));
       
-      if (order) {
-        setOrderData(order);
+      if (isNaN(orderId)) {
+        throw new Error("Invalid ticket number format");
+      }
+
+      const { data, error } = await supabase
+        .from("laundry_orders")
+        .select("*")
+        .eq("id", orderId)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        const formattedOrder: OrderStatus = {
+          id: data.id,
+          ticketId: `LMS-${data.id.toString().padStart(6, '0')}`,
+          name: data.name,
+          contact: data.contact,
+          clothes: data.clothes || "",
+          created_at: data.created_at || "",
+          status: (data.status as OrderStatus["status"]) || "Pending"
+        };
+        setOrderData(formattedOrder);
         toast({
           title: "Order Found!",
           description: "Your order details are displayed below."
@@ -112,10 +109,11 @@ const TrackOrder = () => {
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      setOrderData(null);
       toast({
-        title: "Tracking Failed",
-        description: "Please try again later.",
+        title: "Order Not Found",
+        description: "Please check your ticket number and try again.",
         variant: "destructive"
       });
     } finally {
@@ -203,39 +201,28 @@ const TrackOrder = () => {
                     <p className="font-medium">{orderData.name}</p>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Phone Number</Label>
-                    <p>{orderData.phone}</p>
+                    <Label className="text-sm text-muted-foreground">Contact</Label>
+                    <p>{orderData.contact}</p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Clothes Type</Label>
-                    <p className="font-medium">{orderData.clothesType}</p>
+                    <Label className="text-sm text-muted-foreground">Order Details</Label>
+                    <p className="font-medium">{orderData.clothes}</p>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Quantity</Label>
-                    <p>{orderData.quantity} items</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Drop-off Date</Label>
-                    <p>{new Date(orderData.dropoffDate).toLocaleDateString()}</p>
+                    <Label className="text-sm text-muted-foreground">Order Date</Label>
+                    <p>{new Date(orderData.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
               </div>
-              
-              {orderData.notes && (
-                <div>
-                  <Label className="text-sm text-muted-foreground">Special Notes</Label>
-                  <p className="bg-muted p-3 rounded-md">{orderData.notes}</p>
-                </div>
-              )}
 
               {/* Status Timeline */}
               <div className="mt-6 pt-6 border-t">
                 <Label className="text-sm text-muted-foreground mb-4 block">Order Progress</Label>
                 <div className="space-y-3">
-                  {["Received", "In Progress", "Ready", "Collected"].map((status, index) => {
-                    const isCompleted = ["Received", "In Progress", "Ready", "Collected"].indexOf(orderData.status) >= index;
+                  {["Pending", "In Progress", "Ready", "Collected"].map((status, index) => {
+                    const isCompleted = ["Pending", "In Progress", "Ready", "Collected"].indexOf(orderData.status) >= index;
                     const isCurrent = status === orderData.status;
                     
                     return (
@@ -253,12 +240,12 @@ const TrackOrder = () => {
           </Card>
         )}
 
-        {/* Demo Instructions */}
+        {/* Instructions */}
         <Card className="mt-8 bg-accent/50">
           <CardContent className="p-4">
-            <h4 className="font-medium mb-2">Demo Instructions</h4>
+            <h4 className="font-medium mb-2">How to Track</h4>
             <p className="text-sm text-muted-foreground">
-              Try these demo ticket numbers: <span className="font-mono">LMS-123456</span> or <span className="font-mono">LMS-789012</span>
+              Enter the ticket number you received when submitting your order (format: LMS-000123)
             </p>
           </CardContent>
         </Card>

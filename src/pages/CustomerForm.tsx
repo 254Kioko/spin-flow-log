@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { Shirt, Phone, Mail, Package, FileText } from "lucide-react";
 
 const CustomerForm = () => {
@@ -56,13 +57,25 @@ const CustomerForm = () => {
     }
 
     try {
-      // Generate ticket number (in real app, this would come from backend)
-      const ticketNumber = `LMS-${Date.now().toString().slice(-6)}`;
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { data, error } = await supabase
+        .from("laundry_orders")
+        .insert([
+          {
+            name: formData.fullName,
+            contact: formData.phone,
+            clothes: `${formData.clothesType} (${formData.quantity} items)${formData.notes ? ` - ${formData.notes}` : ''}`,
+            status: "Pending"
+          }
+        ])
+        .select();
 
-      // Success message
+      if (error) {
+        throw error;
+      }
+
+      // Generate ticket number based on order ID
+      const ticketNumber = `LMS-${data[0].id.toString().padStart(6, '0')}`;
+
       toast({
         title: "Order Submitted Successfully!",
         description: `Your ticket number is: ${ticketNumber}. Save this for tracking.`
@@ -78,10 +91,10 @@ const CustomerForm = () => {
         notes: ""
       });
 
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Submission Failed",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive"
       });
     } finally {

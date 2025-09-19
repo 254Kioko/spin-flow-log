@@ -1,81 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Package, Users, TrendingUp, Edit } from "lucide-react";
 
 interface Order {
-  id: string;
+  id: number;
   ticketId: string;
   name: string;
-  phone: string;
-  email?: string;
-  clothesType: string;
-  quantity: number;
-  dropoffDate: string;
-  status: "Received" | "In Progress" | "Ready" | "Collected";
-  notes?: string;
+  contact: string;
+  clothes: string;
+  created_at: string;
+  status: "Pending" | "In Progress" | "Ready" | "Collected";
 }
 
 const AdminDashboard = () => {
   const { toast } = useToast();
-  
-  // Mock data for demo
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: "1",
-      ticketId: "LMS-123456",
-      name: "John Doe",
-      phone: "+1234567890",
-      email: "john@example.com",
-      clothesType: "Shirts",
-      quantity: 5,
-      dropoffDate: "2024-01-15",
-      status: "Ready",
-      notes: "Starch on collars"
-    },
-    {
-      id: "2",
-      ticketId: "LMS-789012",
-      name: "Jane Smith",
-      phone: "+1987654321",
-      clothesType: "Suits",
-      quantity: 2,
-      dropoffDate: "2024-01-16",
-      status: "In Progress",
-      notes: "Dry clean only"
-    },
-    {
-      id: "3",
-      ticketId: "LMS-345678",
-      name: "Mike Johnson",
-      phone: "+1122334455",
-      email: "mike@example.com",
-      clothesType: "Casual Wear",
-      quantity: 8,
-      dropoffDate: "2024-01-17",
-      status: "Received",
-      notes: ""
-    },
-    {
-      id: "4",
-      ticketId: "LMS-901234",
-      name: "Sarah Wilson",
-      phone: "+1555666777",
-      clothesType: "Dresses",
-      quantity: 3,
-      dropoffDate: "2024-01-14",
-      status: "Collected",
-      notes: "Handle with care"
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  async function fetchOrders() {
+    try {
+      const { data, error } = await supabase
+        .from("laundry_orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const formattedOrders = data?.map(order => ({
+        id: order.id,
+        ticketId: `LMS-${order.id.toString().padStart(6, '0')}`,
+        name: order.name,
+        contact: order.contact,
+        clothes: order.clothes || "",
+        created_at: order.created_at || "",
+        status: (order.status as Order["status"]) || "Pending"
+      })) || [];
+
+      setOrders(formattedOrders);
+    } catch (error: any) {
+      toast({
+        title: "Error Loading Orders",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Received":
+      case "Pending":
         return "bg-status-received text-white";
       case "In Progress":
         return "bg-status-progress text-white";
@@ -88,25 +73,53 @@ const AdminDashboard = () => {
     }
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
-    
-    toast({
-      title: "Status Updated",
-      description: `Order status has been updated to ${newStatus}.`
-    });
+  const updateOrderStatus = async (orderId: number, newStatus: Order["status"]) => {
+    try {
+      const { error } = await supabase
+        .from("laundry_orders")
+        .update({ status: newStatus })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+      
+      toast({
+        title: "Status Updated",
+        description: `Order status has been updated to ${newStatus}.`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const stats = {
     totalOrders: orders.length,
     activeOrders: orders.filter(o => o.status !== "Collected").length,
     readyOrders: orders.filter(o => o.status === "Ready").length,
-    todayOrders: orders.filter(o => o.dropoffDate === "2024-01-17").length
+    todayOrders: orders.filter(o => {
+      const today = new Date().toDateString();
+      return new Date(o.created_at).toDateString() === today;
+    }).length
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -180,8 +193,7 @@ const AdminDashboard = () => {
                   <TableHead>Customer</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Clothes</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Drop-off Date</TableHead>
+                  <TableHead>Order Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -191,27 +203,16 @@ const AdminDashboard = () => {
                   <TableRow key={order.id}>
                     <TableCell className="font-mono">{order.ticketId}</TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{order.name}</p>
-                        {order.notes && (
-                          <p className="text-xs text-muted-foreground truncate max-w-32">
-                            {order.notes}
-                          </p>
-                        )}
-                      </div>
+                      <p className="font-medium">{order.name}</p>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        <p>{order.phone}</p>
-                        {order.email && (
-                          <p className="text-muted-foreground">{order.email}</p>
-                        )}
-                      </div>
+                      <p className="text-sm">{order.contact}</p>
                     </TableCell>
-                    <TableCell>{order.clothesType}</TableCell>
-                    <TableCell>{order.quantity} items</TableCell>
                     <TableCell>
-                      {new Date(order.dropoffDate).toLocaleDateString()}
+                      <p className="text-sm">{order.clothes}</p>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(order.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(order.status)}>
@@ -229,7 +230,7 @@ const AdminDashboard = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Received">Received</SelectItem>
+                          <SelectItem value="Pending">Pending</SelectItem>
                           <SelectItem value="In Progress">In Progress</SelectItem>
                           <SelectItem value="Ready">Ready</SelectItem>
                           <SelectItem value="Collected">Collected</SelectItem>
@@ -244,23 +245,17 @@ const AdminDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Backend Notice */}
-      <Card className="mt-8 bg-accent/50">
-        <CardContent className="p-6">
-          <h4 className="font-medium mb-2 flex items-center space-x-2">
-            <Edit className="w-5 h-5" />
-            <span>Backend Integration Required</span>
-          </h4>
-          <p className="text-sm text-muted-foreground mb-4">
-            This is a frontend demo. To enable full functionality including data persistence, 
-            authentication, and real-time updates, connect your project to Supabase.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Features available with Supabase: User authentication, order database, 
-            status updates, email notifications, and more.
-          </p>
-        </CardContent>
-      </Card>
+      {orders.length === 0 && (
+        <Card className="mt-8 bg-accent/50">
+          <CardContent className="p-6 text-center">
+            <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h4 className="font-medium mb-2">No Orders Yet</h4>
+            <p className="text-sm text-muted-foreground">
+              Orders will appear here once customers start submitting them through the customer form.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

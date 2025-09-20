@@ -1,8 +1,10 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Shirt, Truck, Search, LayoutDashboard } from "lucide-react";
+import { Shirt, Truck, Search, LayoutDashboard, Menu, X } from "lucide-react";
+import { useState } from "react";
 
 const Layout = () => {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -62,13 +64,62 @@ const Layout = () => {
 
             {/* Mobile menu button */}
             <div className="md:hidden">
-              <button className="p-2 rounded-md hover:bg-accent">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-md hover:bg-accent transition-colors"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
               </button>
             </div>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden border-t bg-card animate-fade-in">
+              <nav className="px-4 py-3 space-y-2">
+                <Link
+                  to="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-3 py-3 rounded-md transition-colors w-full ${
+                    isActive("/")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <Truck className="w-5 h-5" />
+                  <span>Submit Order</span>
+                </Link>
+                <Link
+                  to="/track"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-3 py-3 rounded-md transition-colors w-full ${
+                    isActive("/track")
+                      ? "bg-primary text-primary-foreground" 
+                      : "text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <Search className="w-5 h-5" />
+                  <span>Track Order</span>
+                </Link>
+                <Link
+                  to="/admin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-3 py-3 rounded-md transition-colors w-full ${
+                    isActive("/admin")
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  <span>Admin</span>
+                </Link>
+              </nav>
+            </div>
+          )}
         </div>
       </header>
 

@@ -1,13 +1,10 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Shirt, Truck, Search, LayoutDashboard, Menu, X, User, LogOut } from "lucide-react";
+import { Shirt, Truck, Search, LayoutDashboard, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
 
 const Layout = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, userRole, signOut } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -65,34 +62,6 @@ const Layout = () => {
               </Link>
             </nav>
 
-            {/* User Actions */}
-            <div className="hidden md:flex items-center space-x-4">
-              {user ? (
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-2 text-sm">
-                    <User className="w-4 h-4" />
-                    <span className="text-muted-foreground">
-                      {userRole === 'admin' ? 'Admin' : 'User'}
-                    </span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={signOut}
-                    className="flex items-center space-x-1"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </Button>
-                </div>
-              ) : (
-                <Link to="/auth">
-                  <Button variant="default" size="sm">
-                    Login
-                  </Button>
-                </Link>
-              )}
-            </div>
 
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -149,36 +118,6 @@ const Layout = () => {
                   <LayoutDashboard className="w-5 h-5" />
                   <span>Admin</span>
                 </Link>
-                
-                {/* Mobile User Actions */}
-                <div className="border-t pt-3 mt-3">
-                  {user ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-3 px-3 py-2 text-sm text-muted-foreground">
-                        <User className="w-5 h-5" />
-                        <span>Logged in as {userRole === 'admin' ? 'Admin' : 'User'}</span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={signOut}
-                        className="w-full flex items-center space-x-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
-                      </Button>
-                    </div>
-                  ) : (
-                    <Link 
-                      to="/auth" 
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="block w-full"
-                    >
-                      <Button className="w-full">
-                        Login
-                      </Button>
-                    </Link>
-                  )}
-                </div>
               </nav>
             </div>
           )}

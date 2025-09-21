@@ -1,10 +1,13 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Shirt, Truck, Search, LayoutDashboard, Menu, X } from "lucide-react";
+import { Shirt, Truck, Search, LayoutDashboard, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 const Layout = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAdminLoggedIn, logout } = useAdminAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -62,6 +65,20 @@ const Layout = () => {
               </Link>
             </nav>
 
+            {/* Admin Actions */}
+            <div className="hidden md:flex items-center space-x-4">
+              {isAdminLoggedIn && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={logout}
+                  className="flex items-center space-x-1"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </Button>
+              )}
+            </div>
 
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -118,6 +135,20 @@ const Layout = () => {
                   <LayoutDashboard className="w-5 h-5" />
                   <span>Admin</span>
                 </Link>
+                
+                {/* Mobile Admin Actions */}
+                {isAdminLoggedIn && (
+                  <div className="border-t pt-3 mt-3">
+                    <Button
+                      variant="outline"
+                      onClick={logout}
+                      className="w-full flex items-center space-x-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </Button>
+                  </div>
+                )}
               </nav>
             </div>
           )}
